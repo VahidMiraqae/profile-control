@@ -14,13 +14,14 @@ export class ViewModel {
         this.moveSmoothTransitionHandleCommand = new Command(this.moveSmoothTransitionHandle, this.canMoveSmoothTransitionHandle);
         // end of making commands
         this.period = 360;  
-        this.points = [
+        this.points = [ 
             new ProfilePoint(0, 0, null),
             new ProfilePoint(45, 1, { before: 10, after: 10 }),
             new ProfilePoint(90, 0, { before: 10, after: 10 }),
             new ProfilePoint(135, 1, { before: 10, after: 10 }),
             new ProfilePoint(180, 0, { before: 10, after: 10 }),
             new ProfilePoint(225, 1, { before: 10, after: 10 }),
+            new ProfilePoint(270, 1, { before: 10, after: 10 }),
             new ProfilePoint(340, 0, null)
         ];
     }

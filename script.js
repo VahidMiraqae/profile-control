@@ -1,6 +1,6 @@
-import {Settings} from "./Settings.js"
-import { View } from "./View.js";
-import { ViewModel } from "./ViewModel.js";
+import {Settings} from "./src/Settings.js"
+import { View } from "./src/View.js";
+import { ViewModel } from "./src/ViewModel.js";
 
 
 const root1 = document.getElementById('root1');

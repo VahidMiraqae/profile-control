@@ -5,6 +5,6 @@ export default {
         format: 'iife'
     },
     watch: {
-        include: ["*"]
+        include: ["*", "src/*"]
     }
 }

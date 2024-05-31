@@ -8,8 +8,7 @@ export class BaseView {
         this.makeCanvas();
         this.contextMenu = new ContextMenu(this.root, this.canv);
         this.contextMenu.closed = () => this.draw();
-        this.canv.addEventListener('contextmenu',
-            (e) => this.contextMenu.show(e, this.getContextMenuContext()));
+        this.canv.addEventListener('contextmenu', (e) => this.contextMenu.show(e, this.getContextMenuContext()));
 
         this.setupSizeObserver();
         this.setupEventListeners();
