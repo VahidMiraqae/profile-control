@@ -1,4 +1,5 @@
 import { BaseView } from "./BaseView";
+import { interpolateT } from "./interpolate";
 
 export class View extends BaseView {
     constructor(root, settings, vm) {
@@ -84,9 +85,27 @@ export class View extends BaseView {
         ctx.strokeStyle = 'red';
         ctx.lineWidth = 2;
         if (points[0].hasTransition()) {
-            // skipping for now if the first point has transition
+            const p2 = points[0];
+            const { p1, p3 } = this.vm.getTransitionPoints(0);
+            const B = p1.x - 2 * p2.x + p3.x;
+            let t = 0.5;
+            if (B !== 0) {
+                const A = Math.sqrt(p1.x * p2.x - p3.x * p1.x - p2.x * p2.x + p3.x * p2.x);
+                const t1 = (p1.x - p2.x + A) / B;
+                const t2 = (p1.x - p2.x - A) / B;
+                t = t1 < 0 || t1 > 1 ? t2 : t1;
+            }
+
+            const p15 = interpolateT(p1, p2, t);
+            const p25 = interpolateT(p2, p3, t);
+            const pCut = interpolateT(p15, p25, t);
+            const cpCut = this.modelToCanvasXY(pCut);
+            const cp25 = this.modelToCanvasXY(p25);
+            const cp3 = this.modelToCanvasXY(p3);
+            ctx.bezierCurveTo(cpCut.x, cpCut.y, cp25.x, cp25.y, cp3.x, cp3.y);
+
         }
-        ctx.moveTo(firstPoint.x, firstPoint.y);
+        //ctx.moveTo(firstPoint.x, firstPoint.y);
         for (let i = 1; i < points.length; i++) {
             const canvasPoint = this.modelToCanvasXY(points[i]);
             if (points[i].hasTransition()) {
@@ -100,8 +119,34 @@ export class View extends BaseView {
                 ctx.lineTo(canvasPoint.x, canvasPoint.y);
             }
         }
-        const point = this.modelToCanvasXY({ x: points[0].x + this.vm.period, y: points[0].y });
-        ctx.lineTo(point.x, point.y);
+        if (points[0].hasTransition()) {
+
+            const p2 = points[0];
+            const { p1, p3 } = this.vm.getTransitionPoints(0);
+            const B = p1.x - 2 * p2.x + p3.x;
+            let t = 0.5;
+            if (B !== 0) {
+                const A = Math.sqrt(p1.x * p2.x - p3.x * p1.x - p2.x * p2.x + p3.x * p2.x);
+                const t1 = (p1.x - p2.x + A) / B;
+                const t2 = (p1.x - p2.x - A) / B;
+                t = t1 < 0 || t1 > 1 ? t2 : t1;
+            }
+
+            const p15 = interpolateT(p1, p2, t);
+            const p25 = interpolateT(p2, p3, t);
+            const pCut = interpolateT(p15, p25, t);
+            const cpCut = this.modelToCanvasXY({ x: this.vm.period + pCut.x, y: pCut.y });
+            const cp15 = this.modelToCanvasXY({x: this.vm.period + p15.x, y: p15.y});
+            const cp3 = this.modelToCanvasXY(p3);
+            const cp1 = this.modelToCanvasXY({ x: this.vm.period + p1.x, y: p1.y });
+            ctx.lineTo(cp1.x, cp1.y)
+            ctx.bezierCurveTo(cp1.x, cp1.y, cp15.x, cp15.y, cpCut.x, cpCut.y);
+
+        } else {
+            ctx.lineTo(this.period, points[0].y);
+        }
+        // const point = this.modelToCanvasXY({ x: points[0].x + this.vm.period, y: points[0].y });
+        // ctx.lineTo(point.x, point.y);
         ctx.stroke();
         ctx.lineWidth = 1;
         ctx.strokeStyle = 'black';

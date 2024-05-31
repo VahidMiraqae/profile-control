@@ -201,6 +201,14 @@
 
     }
 
+    function interpolate(p1, p2, x) {
+        return (x - p1.x) * (p2.y - p1.y) / (p2.x - p1.x) + p1.y;
+    }
+
+    function interpolateT(p1, p2, t) {
+        return { x: p1.x + t * (p2.x - p1.x), y: p1.y + t * (p2.y - p1.y) };
+    }
+
     class View extends BaseView {
         constructor(root, settings, vm) {
             super(root, settings);
@@ -280,12 +288,32 @@
 
         drawLines = (ctx, { mouseX, mouseY }) => {
             const points = this.vm.getPoints();
-            const firstPoint = this.modelToCanvasXY(points[0]);
+            this.modelToCanvasXY(points[0]);
             ctx.beginPath();
             ctx.strokeStyle = 'red';
             ctx.lineWidth = 2;
-            if (points[0].hasTransition()) ;
-            ctx.moveTo(firstPoint.x, firstPoint.y);
+            if (points[0].hasTransition()) {
+                const p2 = points[0];
+                const { p1, p3 } = this.vm.getTransitionPoints(0);
+                const B = p1.x - 2 * p2.x + p3.x;
+                let t = 0.5;
+                if (B !== 0) {
+                    const A = Math.sqrt(p1.x * p2.x - p3.x * p1.x - p2.x * p2.x + p3.x * p2.x);
+                    const t1 = (p1.x - p2.x + A) / B;
+                    const t2 = (p1.x - p2.x - A) / B;
+                    t = t1 < 0 || t1 > 1 ? t2 : t1;
+                }
+
+                const p15 = interpolateT(p1, p2, t);
+                const p25 = interpolateT(p2, p3, t);
+                const pCut = interpolateT(p15, p25, t);
+                const cpCut = this.modelToCanvasXY(pCut);
+                const cp25 = this.modelToCanvasXY(p25);
+                const cp3 = this.modelToCanvasXY(p3);
+                ctx.bezierCurveTo(cpCut.x, cpCut.y, cp25.x, cp25.y, cp3.x, cp3.y);
+
+            }
+            //ctx.moveTo(firstPoint.x, firstPoint.y);
             for (let i = 1; i < points.length; i++) {
                 const canvasPoint = this.modelToCanvasXY(points[i]);
                 if (points[i].hasTransition()) {
@@ -299,8 +327,34 @@
                     ctx.lineTo(canvasPoint.x, canvasPoint.y);
                 }
             }
-            const point = this.modelToCanvasXY({ x: points[0].x + this.vm.period, y: points[0].y });
-            ctx.lineTo(point.x, point.y);
+            if (points[0].hasTransition()) {
+
+                const p2 = points[0];
+                const { p1, p3 } = this.vm.getTransitionPoints(0);
+                const B = p1.x - 2 * p2.x + p3.x;
+                let t = 0.5;
+                if (B !== 0) {
+                    const A = Math.sqrt(p1.x * p2.x - p3.x * p1.x - p2.x * p2.x + p3.x * p2.x);
+                    const t1 = (p1.x - p2.x + A) / B;
+                    const t2 = (p1.x - p2.x - A) / B;
+                    t = t1 < 0 || t1 > 1 ? t2 : t1;
+                }
+
+                const p15 = interpolateT(p1, p2, t);
+                const p25 = interpolateT(p2, p3, t);
+                const pCut = interpolateT(p15, p25, t);
+                const cpCut = this.modelToCanvasXY({ x: this.vm.period + pCut.x, y: pCut.y });
+                const cp15 = this.modelToCanvasXY({x: this.vm.period + p15.x, y: p15.y});
+                this.modelToCanvasXY(p3);
+                const cp1 = this.modelToCanvasXY({ x: this.vm.period + p1.x, y: p1.y });
+                ctx.lineTo(cp1.x, cp1.y);
+                ctx.bezierCurveTo(cp1.x, cp1.y, cp15.x, cp15.y, cpCut.x, cpCut.y);
+
+            } else {
+                ctx.lineTo(this.period, points[0].y);
+            }
+            // const point = this.modelToCanvasXY({ x: points[0].x + this.vm.period, y: points[0].y });
+            // ctx.lineTo(point.x, point.y);
             ctx.stroke();
             ctx.lineWidth = 1;
             ctx.strokeStyle = 'black';
@@ -394,10 +448,6 @@
         hasTransition = () => this.transition !== null;
     }
 
-    function interpolate(p1, p2, x) {
-        return (x - p1.x) * (p2.y - p1.y) / (p2.x - p1.x) + p1.y;
-    }
-
     class ViewModel {
         constructor() {
 
@@ -409,16 +459,16 @@
             this.removeSmoothTransitionCommand = new Command(this.removeSmoothTransition, this.canRemoveSmoothTransition);
             this.moveSmoothTransitionHandleCommand = new Command(this.moveSmoothTransitionHandle, this.canMoveSmoothTransitionHandle);
             // end of making commands
-            this.period = 360;  
-            this.points = [ 
-                new ProfilePoint(0, 0, null),
+            this.period = 360;
+            this.points = [
+                new ProfilePoint(0, 0, { before: 10, after: 20 }),
                 new ProfilePoint(45, 1, { before: 10, after: 10 }),
                 new ProfilePoint(90, 0, { before: 10, after: 10 }),
                 new ProfilePoint(135, 1, { before: 10, after: 10 }),
                 new ProfilePoint(180, 0, { before: 10, after: 10 }),
                 new ProfilePoint(225, 1, { before: 10, after: 10 }),
                 new ProfilePoint(270, 1, { before: 10, after: 10 }),
-                new ProfilePoint(340, 0, null)
+                new ProfilePoint(320, 0, { before: 10, after: 20 })
             ];
         }
 
@@ -500,10 +550,32 @@
         };
 
         getTransitionPoints = (i) => {
-            if (this.points[i].hasTransition()) {
+            if (this.points[i].hasTransition() && i > 0 && i < this.points.length - 1) {
                 const previousPoint = this.points[i - 1];
                 const thisPoint = this.points[i];
                 const nextPoint = this.points[i + 1];
+                const xBefore = thisPoint.x - thisPoint.transition.before;
+                const yBefore = interpolate(previousPoint, thisPoint, xBefore);
+                const xAfter = thisPoint.x + thisPoint.transition.after;
+                const yAfter = interpolate(thisPoint, nextPoint, xAfter);
+                return { p1: { x: xBefore, y: yBefore }, p3: { x: xAfter, y: yAfter } };
+            }
+            if (this.points[i].hasTransition() && i === 0) {
+                const lastPoint = this.points[this.points.length - 1];
+                const previousPoint = { x: lastPoint.x - this.period, y: lastPoint.y };
+                const thisPoint = this.points[i];
+                const nextPoint = this.points[i + 1];
+                const xBefore = thisPoint.x - thisPoint.transition.before;
+                const yBefore = interpolate(previousPoint, thisPoint, xBefore);
+                const xAfter = thisPoint.x + thisPoint.transition.after;
+                const yAfter = interpolate(thisPoint, nextPoint, xAfter);
+                return { p1: { x: xBefore, y: yBefore }, p3: { x: xAfter, y: yAfter } };
+            }
+            if (this.points[i].hasTransition() && i === this.points.length - 1) {
+                const firstPoint = this.points[0];
+                const previousPoint = this.points[i - 1];
+                const thisPoint = this.points[i];
+                const nextPoint = { x: this.period + firstPoint.x , y: firstPoint.y };
                 const xBefore = thisPoint.x - thisPoint.transition.before;
                 const yBefore = interpolate(previousPoint, thisPoint, xBefore);
                 const xAfter = thisPoint.x + thisPoint.transition.after;

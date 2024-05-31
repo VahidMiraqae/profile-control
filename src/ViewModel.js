@@ -13,16 +13,16 @@ export class ViewModel {
         this.removeSmoothTransitionCommand = new Command(this.removeSmoothTransition, this.canRemoveSmoothTransition);
         this.moveSmoothTransitionHandleCommand = new Command(this.moveSmoothTransitionHandle, this.canMoveSmoothTransitionHandle);
         // end of making commands
-        this.period = 360;  
-        this.points = [ 
-            new ProfilePoint(0, 0, null),
+        this.period = 360;
+        this.points = [
+            new ProfilePoint(0, 0, { before: 10, after: 20 }),
             new ProfilePoint(45, 1, { before: 10, after: 10 }),
             new ProfilePoint(90, 0, { before: 10, after: 10 }),
             new ProfilePoint(135, 1, { before: 10, after: 10 }),
             new ProfilePoint(180, 0, { before: 10, after: 10 }),
             new ProfilePoint(225, 1, { before: 10, after: 10 }),
             new ProfilePoint(270, 1, { before: 10, after: 10 }),
-            new ProfilePoint(340, 0, null)
+            new ProfilePoint(320, 0, { before: 10, after: 20 })
         ];
     }
 
@@ -104,10 +104,32 @@ export class ViewModel {
     };
 
     getTransitionPoints = (i) => {
-        if (this.points[i].hasTransition()) {
+        if (this.points[i].hasTransition() && i > 0 && i < this.points.length - 1) {
             const previousPoint = this.points[i - 1];
             const thisPoint = this.points[i];
             const nextPoint = this.points[i + 1];
+            const xBefore = thisPoint.x - thisPoint.transition.before;
+            const yBefore = interpolate(previousPoint, thisPoint, xBefore);
+            const xAfter = thisPoint.x + thisPoint.transition.after;
+            const yAfter = interpolate(thisPoint, nextPoint, xAfter);
+            return { p1: { x: xBefore, y: yBefore }, p3: { x: xAfter, y: yAfter } };
+        }
+        if (this.points[i].hasTransition() && i === 0) {
+            const lastPoint = this.points[this.points.length - 1];
+            const previousPoint = { x: lastPoint.x - this.period, y: lastPoint.y };
+            const thisPoint = this.points[i];
+            const nextPoint = this.points[i + 1];
+            const xBefore = thisPoint.x - thisPoint.transition.before;
+            const yBefore = interpolate(previousPoint, thisPoint, xBefore);
+            const xAfter = thisPoint.x + thisPoint.transition.after;
+            const yAfter = interpolate(thisPoint, nextPoint, xAfter);
+            return { p1: { x: xBefore, y: yBefore }, p3: { x: xAfter, y: yAfter } };
+        }
+        if (this.points[i].hasTransition() && i === this.points.length - 1) {
+            const firstPoint = this.points[0];
+            const previousPoint = this.points[i - 1];
+            const thisPoint = this.points[i];
+            const nextPoint = { x: this.period + firstPoint.x , y: firstPoint.y };
             const xBefore = thisPoint.x - thisPoint.transition.before;
             const yBefore = interpolate(previousPoint, thisPoint, xBefore);
             const xAfter = thisPoint.x + thisPoint.transition.after;
