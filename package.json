@@ -1,0 +1,12 @@
+{
+  "name": "profile-control",
+  "version": "1.0.0",
+  "description": "",
+  "main": "BaseView.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "rollup -c -w"
+  },
+  "author": "",
+  "license": "ISC"
+}
