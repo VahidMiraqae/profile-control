@@ -3,7 +3,7 @@
 
     class Settings {
         constructor() {
-            this.markerSize = 7.5;
+            this.markerSize = 10;
             this.minHeight = 100;
             this.paddingX = 30;
             this.paddingY = 30;
@@ -117,7 +117,7 @@
             this.sizeObserver = new ResizeObserver(a => {
                 this.canvasSize = a[0].contentRect;
                 this.canv.width = this.canvasSize.width;
-                this.canv.height = this.canvasSize.height;
+                this.canv.height = this.canvasSize.height; 
                 if (this.canvasSize.height < this.settings.minHeight) {
                     this.root.style.height = `${this.settings.minHeight}px`;
                 }
@@ -211,27 +211,37 @@
             this.contextMenu.bindMenuItem('Apply Transition', this.vm.applySmoothTransitionCommand, this.contextToHandleIdConverter);
             this.contextMenu.bindMenuItem('Remove Transition', this.vm.removeSmoothTransitionCommand, this.contextToHandleIdConverter);
             this.bindMouseDragMarker('handle',
-                () => this.vm.getPoints().map(a => this.modelXYToCanvasXY(a)),
+                () => this.vm.getPoints().map(a => this.modelToCanvasXY(a)),
                 this.isMouseOverMarker,
                 this.vm.moveHandleCommand,
-                this.xxx);
+                (id) => {
+                    const result = this.canvasToModelXY({ x: this.mouseMoveEvent.offsetX, y: this.mouseMoveEvent.offsetY });
+                    return { id, newX: result.x, newY: result.y };
+                }
+            );
             this.bindMouseDragMarker('controlHandleBefore',
                 () => this.vm.getPoints().map((a, b) => {
                     const ff = this.vm.getTransitionPoints(b)?.p1;
-                    return ff === undefined ? { x: null, y: null } : this.modelXYToCanvasXY(ff);
+                    return ff === undefined ? { x: null, y: null } : this.modelToCanvasXY(ff);
                 }),
                 this.isMouseOverMarker,
                 this.vm.moveSmoothTransitionHandleCommand,
-                this.xxx1
+                (id) => {
+                    const result = this.canvasToModelXY({ x: this.mouseMoveEvent.offsetX, y: this.mouseMoveEvent.offsetY });
+                    return { id, beforeOrAfter: 'before', newX: result.x, newY: result.y };
+                }
             );
             this.bindMouseDragMarker('controlHandleAfter',
                 () => this.vm.getPoints().map((a, b) => {
                     const ff = this.vm.getTransitionPoints(b)?.p3;
-                    return ff === undefined ? { x: null, y: null } : this.modelXYToCanvasXY(ff);
+                    return ff === undefined ? { x: null, y: null } : this.modelToCanvasXY(ff);
                 }),
                 this.isMouseOverMarker,
                 this.vm.moveSmoothTransitionHandleCommand,
-                this.xxx2
+                (id) => {
+                    const result = this.canvasToModelXY({ x: this.mouseMoveEvent.offsetX, y: this.mouseMoveEvent.offsetY });
+                    return { id, beforeOrAfter: 'after', newX: result.x, newY: result.y };
+                }
             );
             this.registerDrawer(this.drawAxes);
             this.registerDrawer(this.drawLines);
@@ -239,46 +249,29 @@
         }
 
         contextToXYConverter = (context) => {
-            return this.canvasXYToModelXY({ x: context.lastMousePosition.offsetX, y: context.lastMousePosition.offsetY });
+            return this.canvasToModelXY({ x: context.lastMousePosition.offsetX, y: context.lastMousePosition.offsetY });
         };
 
         contextToHandleIdConverter = (context) => {
             return { handleId: context.objectManager.currentObjectId['handle'] };
         };
 
-        xxx = (id) => {
-            const result = this.canvasXYToModelXY({ x: this.mouseMoveEvent.offsetX, y: this.mouseMoveEvent.offsetY });
-            return { id, newX: result.x, newY: result.y };
-        };
-
-        xxx1 = (id) => {
-            const result = this.canvasXYToModelXY({ x: this.mouseMoveEvent.offsetX, y: this.mouseMoveEvent.offsetY });
-            return { id, beforeOrAfter: 'before', newX: result.x, newY: result.y };
-        };
-
-        xxx2 = (id) => {
-            const result = this.canvasXYToModelXY({ x: this.mouseMoveEvent.offsetX, y: this.mouseMoveEvent.offsetY });
-            return { id, beforeOrAfter: 'after', newX: result.x, newY: result.y };
-        };
-
-        canvasXYToModelXY = ({ x, y }) => {
+        canvasToModelXY = ({ x, y }) => {
             const origin = this.getOrigin();
             const plotSize = this.getPlotSize();
-            const position = {
+            return {
                 x: this.vm.period * ((x - origin.x) / plotSize.width),
                 y: (origin.y - y) / plotSize.height
             };
-            return position;
         };
 
-        modelXYToCanvasXY = ({ x, y }) => {
+        modelToCanvasXY = ({ x, y }) => {
             const origin = this.getOrigin();
             const plotSize = this.getPlotSize();
-            const position = {
+            return {
                 x: (x * plotSize.width / this.vm.period) + origin.x,
                 y: origin.y - y * plotSize.height
             };
-            return position;
         };
 
         isMouseOverMarker = ({ x, y, mouseX, mouseY }) => {
@@ -287,26 +280,26 @@
 
         drawLines = (ctx, { mouseX, mouseY }) => {
             const points = this.vm.getPoints();
-            const firstPoint = this.modelXYToCanvasXY(points[0]);
+            const firstPoint = this.modelToCanvasXY(points[0]);
             ctx.beginPath();
             ctx.strokeStyle = 'red';
             ctx.lineWidth = 2;
             if (points[0].hasTransition()) ;
             ctx.moveTo(firstPoint.x, firstPoint.y);
             for (let i = 1; i < points.length; i++) {
-                const canvasPoint = this.modelXYToCanvasXY(points[i]);
+                const canvasPoint = this.modelToCanvasXY(points[i]);
                 if (points[i].hasTransition()) {
                     const { p1, p3 } = this.vm.getTransitionPoints(i);
-                    const cp1 = this.modelXYToCanvasXY(p1);
+                    const cp1 = this.modelToCanvasXY(p1);
                     ctx.lineTo(cp1.x, cp1.y);
-                    const cp3 = this.modelXYToCanvasXY(p3);
+                    const cp3 = this.modelToCanvasXY(p3);
                     ctx.bezierCurveTo(cp1.x, cp1.y, canvasPoint.x, canvasPoint.y, cp3.x, cp3.y);
                 }
                 else {
                     ctx.lineTo(canvasPoint.x, canvasPoint.y);
                 }
             }
-            const point = this.modelXYToCanvasXY({ x: points[0].x + this.vm.period, y: points[0].y });
+            const point = this.modelToCanvasXY({ x: points[0].x + this.vm.period, y: points[0].y });
             ctx.lineTo(point.x, point.y);
             ctx.stroke();
             ctx.lineWidth = 1;
@@ -319,55 +312,13 @@
             for (let i = 0; i < points.length; i++) {
                 if (points[i].hasTransition()) {
                     const { p1, p3 } = this.vm.getTransitionPoints(i);
-
-
-                    let point = this.modelXYToCanvasXY(p1);
-                    let hover = this.isMouseOverMarker({ x: point.x, y: point.y, mouseX, mouseY })
-                        || (this.draggingObject !== null && this.draggingObject.id === i);
-                    conditionMet = conditionMet || hover;
-                    if (hover) {
-                        ctx.fillStyle = 'purple';
-                    } else {
-                        ctx.fillStyle = 'black';
-                    }
-                    ctx.beginPath();
-                    ctx.arc(point.x, point.y, this.settings.markerSize / 2, 0, 2 * Math.PI);
-                    ctx.fill();
-
-                    point = this.modelXYToCanvasXY(p3);
-                    hover = this.isMouseOverMarker({ x: point.x, y: point.y, mouseX, mouseY })
-                        || (this.draggingObject !== null && this.draggingObject.id === i);
-                    conditionMet = conditionMet || hover;
-                    if (hover) {
-                        ctx.fillStyle = 'purple';
-                    } else {
-                        ctx.fillStyle = 'black';
-                    }
-                    ctx.beginPath();
-                    ctx.arc(point.x, point.y, this.settings.markerSize / 2, 0, 2 * Math.PI);
-                    ctx.fill();
-
+                    ({ conditionMet } = this.newMethod(p1, mouseX, mouseY, i, conditionMet, ctx, 'controlHandleBefore'));
+                    ({ conditionMet } = this.newMethod(p3, mouseX, mouseY, i, conditionMet, ctx, 'controlHandleAfter'));
                 }
-                const point = this.modelXYToCanvasXY(points[i]);
-                const hover = this.isMouseOverMarker({ x: point.x, y: point.y, mouseX, mouseY })
-                    || (this.draggingObject !== null && this.draggingObject.id === i);
-                conditionMet = conditionMet || hover;
-                if (hover) {
-                    ctx.fillStyle = 'purple';
-                } else {
-                    ctx.fillStyle = 'black';
-                }
-                ctx.beginPath();
-                ctx.arc(point.x, point.y, this.settings.markerSize / 2, 0, 2 * Math.PI);
-                ctx.fill();
+                ({ conditionMet } = this.newMethod(points[i], mouseX, mouseY, i, conditionMet, ctx, 'handle'));
             }
 
-            if (conditionMet) {
-                this.canv.style.cursor = 'pointer';
-            } else {
-                this.canv.style.cursor = 'default';
-            }
-
+            this.canv.style.cursor = conditionMet ? 'pointer' : 'default';
         };
 
         drawAxes = (ctx, { mouseX, mouseY }) => {
@@ -402,6 +353,22 @@
 
         };
 
+
+        newMethod(p1, mouseX, mouseY, i, conditionMet, ctx, draggingObjectName) {
+            let point = this.modelToCanvasXY(p1);
+            let hover = this.isMouseOverMarker({ x: point.x, y: point.y, mouseX, mouseY })
+                || (this.draggingObject !== null && this.draggingObject.id === i && this.draggingObject.name === draggingObjectName);
+            conditionMet = conditionMet || hover;
+            if (hover) {
+                ctx.fillStyle = 'purple';
+            } else {
+                ctx.fillStyle = 'black';
+            }
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, this.settings.markerSize / 2, 0, 2 * Math.PI);
+            ctx.fill();
+            return { conditionMet };
+        }
     }
 
     class Command {

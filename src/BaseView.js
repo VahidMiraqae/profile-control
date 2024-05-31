@@ -35,8 +35,8 @@ export class BaseView {
     setupSizeObserver = () => {
         this.sizeObserver = new ResizeObserver(a => {
             this.canvasSize = a[0].contentRect;
-            this.canv.width = this.canvasSize.width
-            this.canv.height = this.canvasSize.height;
+            this.canv.width = this.canvasSize.width;
+            this.canv.height = this.canvasSize.height; 
             if (this.canvasSize.height < this.settings.minHeight) {
                 this.root.style.height = `${this.settings.minHeight}px`;
             }
