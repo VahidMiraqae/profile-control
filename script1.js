@@ -7,6 +7,7 @@
             this.minHeight = 100;
             this.paddingX = 30;
             this.paddingY = 30;
+            this.translation = 0;
         }
 
     }
@@ -230,7 +231,7 @@
             this.bindMouseDragMarker('controlHandleBefore',
                 () => this.vm.getPoints().map((a, b) => {
                     const ff = this.vm.getTransitionPoints(b)?.p1;
-                    return ff === undefined ? { x: null, y: null } : this.modelToCanvasXY(ff);
+                    return ff === undefined ? { x: null, y: null } : this.modelToCanvasXY(this.correctX(ff));
                 }),
                 this.isMouseOverMarker,
                 this.vm.moveSmoothTransitionHandleCommand,
@@ -282,79 +283,73 @@
             };
         };
 
+        translateX_ = ({ x, y }) => {
+            let f = (x + this.settings.translation) % this.vm.period;
+            f = f < 0 ? f + this.vm.period : f;
+            return { x: f, y: y };
+        } 
+
         isMouseOverMarker = ({ x, y, mouseX, mouseY }) => {
             return (Math.abs(mouseX - x) < this.settings.markerSize / 2) && (Math.abs(mouseY - y) < this.settings.markerSize / 2);
         };
 
         drawLines = (ctx, { mouseX, mouseY }) => {
-            const points = this.vm.getPoints();
-            this.modelToCanvasXY(points[0]);
             ctx.beginPath();
             ctx.strokeStyle = 'red';
             ctx.lineWidth = 2;
+
+            const points = this.vm.getPoints();
+            let point1 = {}, point15 = {}, pCut = {};
             if (points[0].hasTransition()) {
                 const p2 = points[0];
                 const { p1, p3 } = this.vm.getTransitionPoints(0);
-                const B = p1.x - 2 * p2.x + p3.x;
-                let t = 0.5;
-                if (B !== 0) {
-                    const A = Math.sqrt(p1.x * p2.x - p3.x * p1.x - p2.x * p2.x + p3.x * p2.x);
-                    const t1 = (p1.x - p2.x + A) / B;
-                    const t2 = (p1.x - p2.x - A) / B;
-                    t = t1 < 0 || t1 > 1 ? t2 : t1;
+                point1 = p1;
+                if (point1.x < 0) {
+                    const B = point1.x - 2 * p2.x + p3.x;
+                    let t = 0.5;
+                    if (B !== 0) {
+                        const A = Math.sqrt(point1.x * p2.x - p3.x * point1.x - p2.x * p2.x + p3.x * p2.x);
+                        const t1 = (point1.x - p2.x + A) / B;
+                        const t2 = (point1.x - p2.x - A) / B;
+                        t = t1 < 0 || t1 > 1 ? t2 : t1;
+                    }
+                    point15 = interpolateT(point1, p2, t);
+                    const p25 = interpolateT(p2, p3, t);
+                    pCut = interpolateT(point15, p25, t);
+                    const cpCut = this.modelToCanvasXY(pCut);
+                    const cp25 = this.modelToCanvasXY(p25);
+                    const cp3 = this.modelToCanvasXY(p3);
+                    ctx.moveTo(cpCut.x, cpCut.y);
+                    ctx.bezierCurveTo(cpCut.x, cpCut.y, cp25.x, cp25.y, cp3.x, cp3.y);
                 }
-
-                const p15 = interpolateT(p1, p2, t);
-                const p25 = interpolateT(p2, p3, t);
-                const pCut = interpolateT(p15, p25, t);
-                const cpCut = this.modelToCanvasXY(pCut);
-                const cp25 = this.modelToCanvasXY(p25);
-                const cp3 = this.modelToCanvasXY(p3);
-                ctx.bezierCurveTo(cpCut.x, cpCut.y, cp25.x, cp25.y, cp3.x, cp3.y);
-
+            }else {
+                const p0 = this.modelToCanvasXY(points[0]);
+                ctx.moveTo(p0.x, p0.y);
             }
-            //ctx.moveTo(firstPoint.x, firstPoint.y);
             for (let i = 1; i < points.length; i++) {
-                const canvasPoint = this.modelToCanvasXY(points[i]);
+                const cPoint = this.modelToCanvasXY(points[i]);
                 if (points[i].hasTransition()) {
                     const { p1, p3 } = this.vm.getTransitionPoints(i);
                     const cp1 = this.modelToCanvasXY(p1);
                     ctx.lineTo(cp1.x, cp1.y);
                     const cp3 = this.modelToCanvasXY(p3);
-                    ctx.bezierCurveTo(cp1.x, cp1.y, canvasPoint.x, canvasPoint.y, cp3.x, cp3.y);
+                    ctx.bezierCurveTo(cp1.x, cp1.y, cPoint.x, cPoint.y, cp3.x, cp3.y);
                 }
                 else {
-                    ctx.lineTo(canvasPoint.x, canvasPoint.y);
+                    ctx.lineTo(cPoint.x, cPoint.y);
                 }
             }
             if (points[0].hasTransition()) {
-
-                const p2 = points[0];
-                const { p1, p3 } = this.vm.getTransitionPoints(0);
-                const B = p1.x - 2 * p2.x + p3.x;
-                let t = 0.5;
-                if (B !== 0) {
-                    const A = Math.sqrt(p1.x * p2.x - p3.x * p1.x - p2.x * p2.x + p3.x * p2.x);
-                    const t1 = (p1.x - p2.x + A) / B;
-                    const t2 = (p1.x - p2.x - A) / B;
-                    t = t1 < 0 || t1 > 1 ? t2 : t1;
-                }
-
-                const p15 = interpolateT(p1, p2, t);
-                const p25 = interpolateT(p2, p3, t);
-                const pCut = interpolateT(p15, p25, t);
-                const cpCut = this.modelToCanvasXY({ x: this.vm.period + pCut.x, y: pCut.y });
-                const cp15 = this.modelToCanvasXY({x: this.vm.period + p15.x, y: p15.y});
-                this.modelToCanvasXY(p3);
-                const cp1 = this.modelToCanvasXY({ x: this.vm.period + p1.x, y: p1.y });
-                ctx.lineTo(cp1.x, cp1.y);
-                ctx.bezierCurveTo(cp1.x, cp1.y, cp15.x, cp15.y, cpCut.x, cpCut.y);
+                const cPoint15 = this.modelToCanvasXY({ x: this.vm.period + point15.x, y: point15.y });
+                const cPoint1 = this.modelToCanvasXY({ x: this.vm.period + point1.x, y: point1.y });
+                const cPCut = this.modelToCanvasXY({ x: this.vm.period + pCut.x, y: pCut.y });
+                ctx.lineTo(cPoint1.x, cPoint1.y);
+                ctx.bezierCurveTo(cPoint1.x, cPoint1.y, cPoint15.x, cPoint15.y, cPCut.x, cPCut.y);
 
             } else {
-                ctx.lineTo(this.period, points[0].y);
+                const p0 = this.modelToCanvasXY({ x: this.vm.period + points[0].x, y: points[0].y });
+                ctx.lineTo(p0.x, p0.y);
             }
-            // const point = this.modelToCanvasXY({ x: points[0].x + this.vm.period, y: points[0].y });
-            // ctx.lineTo(point.x, point.y);
             ctx.stroke();
             ctx.lineWidth = 1;
             ctx.strokeStyle = 'black';
@@ -366,14 +361,20 @@
             for (let i = 0; i < points.length; i++) {
                 if (points[i].hasTransition()) {
                     const { p1, p3 } = this.vm.getTransitionPoints(i);
-                    ({ conditionMet } = this.newMethod(p1, mouseX, mouseY, i, conditionMet, ctx, 'controlHandleBefore'));
-                    ({ conditionMet } = this.newMethod(p3, mouseX, mouseY, i, conditionMet, ctx, 'controlHandleAfter'));
+                    ({ conditionMet } = this.newMethod(this.correctX(p1), mouseX, mouseY, i, conditionMet, ctx, 'controlHandleBefore'));
+                    ({ conditionMet } = this.newMethod(this.correctX(p3), mouseX, mouseY, i, conditionMet, ctx, 'controlHandleAfter'));
                 }
-                ({ conditionMet } = this.newMethod(points[i], mouseX, mouseY, i, conditionMet, ctx, 'handle'));
+                ({ conditionMet } = this.newMethod(this.correctX(points[i]), mouseX, mouseY, i, conditionMet, ctx, 'handle'));
             }
 
             this.canv.style.cursor = conditionMet ? 'pointer' : 'default';
         };
+
+        correctX = ({ x, y }) => {
+            let f = x % this.vm.period;
+            f = f < 0 ? f + this.vm.period : f;
+            return { x: f, y: y };
+        }
 
         drawAxes = (ctx, { mouseX, mouseY }) => {
             const origin = this.getOrigin();
@@ -538,10 +539,28 @@
         moveSmoothTransitionHandle = ({ id, beforeOrAfter, newX, newY }) => {
             const thePoint = this.points[id];
             if (beforeOrAfter === 'before') {
-                this.points[id].transition.before = thePoint.x - newX;
+                if (thePoint.x - thePoint.transition.before < 0) {
+                    this.points[id].transition.before = thePoint.x + (this.period - newX);
+                } else {
+                    const { p1, p3 } = this.getTransitionPoints(id - 1);
+                    if (newX <= p3.x + 5)
+                        newX = p3.x + 5;
+
+                    let before = thePoint.x - newX;
+                    if (before < 5)
+                        before = 5;
+                    this.points[id].transition.before = before;
+                }
             }
             else if (beforeOrAfter === 'after') {
-                this.points[id].transition.after = newX - thePoint.x;
+                const { p1, p3 } = this.getTransitionPoints(id + 1);
+                if (newX >= p1.x - 5)
+                    newX = p1.x - 5;
+
+                let after = newX - thePoint.x;
+                if (after < 5)
+                    after = 5;
+                this.points[id].transition.after = after;
             }
         };
 
@@ -575,7 +594,7 @@
                 const firstPoint = this.points[0];
                 const previousPoint = this.points[i - 1];
                 const thisPoint = this.points[i];
-                const nextPoint = { x: this.period + firstPoint.x , y: firstPoint.y };
+                const nextPoint = { x: this.period + firstPoint.x, y: firstPoint.y };
                 const xBefore = thisPoint.x - thisPoint.transition.before;
                 const yBefore = interpolate(previousPoint, thisPoint, xBefore);
                 const xAfter = thisPoint.x + thisPoint.transition.after;

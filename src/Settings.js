@@ -4,6 +4,7 @@ export class Settings {
         this.minHeight = 100;
         this.paddingX = 30;
         this.paddingY = 30;
+        this.translation = 0;
     }
 
 }

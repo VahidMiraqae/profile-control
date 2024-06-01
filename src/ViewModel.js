@@ -92,10 +92,28 @@ export class ViewModel {
     moveSmoothTransitionHandle = ({ id, beforeOrAfter, newX, newY }) => {
         const thePoint = this.points[id];
         if (beforeOrAfter === 'before') {
-            this.points[id].transition.before = thePoint.x - newX;
+            if (thePoint.x - thePoint.transition.before < 0) {
+                this.points[id].transition.before = thePoint.x + (this.period - newX);
+            } else {
+                const { p1, p3 } = this.getTransitionPoints(id - 1);
+                if (newX <= p3.x + 5)
+                    newX = p3.x + 5;
+
+                let before = thePoint.x - newX;
+                if (before < 5)
+                    before = 5;
+                this.points[id].transition.before = before;
+            }
         }
         else if (beforeOrAfter === 'after') {
-            this.points[id].transition.after = newX - thePoint.x;
+            const { p1, p3 } = this.getTransitionPoints(id + 1);
+            if (newX >= p1.x - 5)
+                newX = p1.x - 5;
+
+            let after = newX - thePoint.x;
+            if (after < 5)
+                after = 5;
+            this.points[id].transition.after = after;
         }
     };
 
@@ -129,7 +147,7 @@ export class ViewModel {
             const firstPoint = this.points[0];
             const previousPoint = this.points[i - 1];
             const thisPoint = this.points[i];
-            const nextPoint = { x: this.period + firstPoint.x , y: firstPoint.y };
+            const nextPoint = { x: this.period + firstPoint.x, y: firstPoint.y };
             const xBefore = thisPoint.x - thisPoint.transition.before;
             const yBefore = interpolate(previousPoint, thisPoint, xBefore);
             const xAfter = thisPoint.x + thisPoint.transition.after;
