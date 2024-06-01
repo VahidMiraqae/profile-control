@@ -15,14 +15,10 @@ export class ViewModel {
         // end of making commands
         this.period = 360;
         this.points = [
-            new ProfilePoint(0, 0, null),
-            new ProfilePoint(45, 1, { before: 10, after: 10 }),
-            new ProfilePoint(90, 0, { before: 10, after: 10 }),
-            new ProfilePoint(135, 1, { before: 10, after: 10 }),
-            new ProfilePoint(180, 0, { before: 10, after: 10 }),
-            new ProfilePoint(225, 1, { before: 10, after: 10 }),
-            new ProfilePoint(270, 1, { before: 10, after: 10 }),
-            new ProfilePoint(320, 0, null)
+            new ProfilePoint(0, 0, { before: 15, after: 5 }),
+            new ProfilePoint(16, 1, { before: 5, after: 15 }),
+            new ProfilePoint(180, 1, { before: 15, after: 5 }),
+            new ProfilePoint(196, 0, { before: 5, after: 15 }), 
         ];
     }
 
