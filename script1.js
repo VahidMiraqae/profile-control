@@ -462,14 +462,14 @@
             // end of making commands
             this.period = 360;
             this.points = [
-                new ProfilePoint(0, 0, { before: 10, after: 20 }),
+                new ProfilePoint(0, 0, null),
                 new ProfilePoint(45, 1, { before: 10, after: 10 }),
                 new ProfilePoint(90, 0, { before: 10, after: 10 }),
                 new ProfilePoint(135, 1, { before: 10, after: 10 }),
                 new ProfilePoint(180, 0, { before: 10, after: 10 }),
                 new ProfilePoint(225, 1, { before: 10, after: 10 }),
                 new ProfilePoint(270, 1, { before: 10, after: 10 }),
-                new ProfilePoint(320, 0, { before: 10, after: 20 })
+                new ProfilePoint(320, 0, null)
             ];
         }
 
@@ -505,10 +505,35 @@
             const y = newY > 0.5 ? 1 : 0;
             let x = newX;
             if (id > 0) {
-                const min = this.points[id - 1].x + 10;
-                const xx = id === this.points.length - 1 ? this.period : this.points[id + 1].x;
-                const max = xx - 10;
-                x = newX < min ? min : (newX > max ? max : newX);
+                let minControl = 0, maxControl = 0;
+                if (current.hasTransition()) {
+                    minControl = x - current.transition.before;
+                    maxControl = x + current.transition.after;
+                } else {
+                    minControl = x;
+                    maxControl = x;
+                }
+                const previous = this.points[id - 1];
+                let minX = previous.x + (previous.hasTransition() ? previous.transition.after : 0);
+                let maxX = 0;
+                if (id < this.points.length - 1) {
+                    const next = this.points[id + 1];
+                    maxX = next.x - (next.hasTransition() ? next.transition.before : 0);
+                }
+                else if (this.points[0].hasTransition() && this.getTransitionPoints(0).p1.x < 0) {
+                    maxX = this.getTransitionPoints(0).p1.x + this.period;
+                }
+                else {
+                    maxX = this.period;
+                }
+
+                minX += 5;
+                maxX -= 5;
+
+                if (minControl < minX)
+                    x = minX + (current.hasTransition() ? current.transition.before : 0);
+                else if (maxControl > maxX)
+                    x = maxX - (current.hasTransition() ? current.transition.after : 0);
             }
             else {
                 x = 0;
@@ -540,12 +565,22 @@
             const thePoint = this.points[id];
             if (beforeOrAfter === 'before') {
                 if (thePoint.x - thePoint.transition.before < 0) {
+                    if (newX > this.period - 5)
+                        newX = this.period - 5;
+
+                    const minX = this.getTransitionPoints(this.points.length - 1).p3.x;
+                    if (newX < minX + 5)
+                        newX = minX + 5;
                     this.points[id].transition.before = thePoint.x + (this.period - newX);
                 } else {
-                    const { p1, p3 } = this.getTransitionPoints(id - 1);
-                    if (newX <= p3.x + 5)
-                        newX = p3.x + 5;
-
+                    if (this.points[id - 1].hasTransition()) {
+                        const { p1, p3 } = this.getTransitionPoints(id - 1);
+                        if (newX <= p3.x + 5)
+                            newX = p3.x + 5;
+                    } else {
+                        if (newX <= 5)
+                            newX = 5;
+                    }
                     let before = thePoint.x - newX;
                     if (before < 5)
                         before = 5;
@@ -553,14 +588,33 @@
                 }
             }
             else if (beforeOrAfter === 'after') {
-                const { p1, p3 } = this.getTransitionPoints(id + 1);
-                if (newX >= p1.x - 5)
-                    newX = p1.x - 5;
+                if (id === this.points.length - 1) {
+                    const maxX = this.getTransitionPoints(0).p1.x < 0
+                        ? this.getTransitionPoints(0).p1.x + this.period
+                        : this.period;
 
-                let after = newX - thePoint.x;
-                if (after < 5)
-                    after = 5;
-                this.points[id].transition.after = after;
+                    if (newX > maxX - 5)
+                        newX = maxX - 5;
+
+                    let after = newX - thePoint.x;
+                    if (after < 5)
+                        after = 5;
+                    this.points[id].transition.after = after;
+                } else {
+                    if (this.points[id + 1].hasTransition()) {
+                        const { p1, p3 } = this.getTransitionPoints(id + 1);
+                        if (newX > p1.x - 5)
+                            newX = p1.x - 5;
+
+                    } else {
+                        if (newX > this.points[id + 1].x - 5)
+                            newX = this.points[id + 1].x - 5;
+                    }
+                    let after = newX - thePoint.x;
+                    if (after < 5)
+                        after = 5;
+                    this.points[id].transition.after = after;
+                }
             }
         };
 
