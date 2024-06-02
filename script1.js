@@ -465,7 +465,7 @@
                 new ProfilePoint(0, 0, { before: 15, after: 5 }),
                 new ProfilePoint(16, 1, { before: 5, after: 15 }),
                 new ProfilePoint(180, 1, { before: 15, after: 5 }),
-                new ProfilePoint(196, 0, { before: 5, after: 15 }), 
+                new ProfilePoint(196, 0, { before: 5, after: 15 }),
             ];
         }
 
@@ -542,8 +542,8 @@
         };
 
         applySmoothTransition = ({ handleId }) => {
-            this.points[handleId].transition = { before: 5, after: 5 };
-            console.log(this.points);
+            const aa = this.points[handleId];
+            this.points[handleId] = new ProfilePoint(aa.x, aa.y, {before: 5, after: 5});
         };
 
         canApplySmoothTransition = ({ handleId }) => {
@@ -551,6 +551,8 @@
         };
 
         removeSmoothTransition = ({ handleId }) => {
+            const aa = this.points[handleId];
+            this.points[handleId] = new ProfilePoint(aa.x, aa.y, null);
         };
 
         canRemoveSmoothTransition = ({ handleId }) => {
