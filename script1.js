@@ -252,6 +252,15 @@
                     return { id, beforeOrAfter: 'after', newX: result.x, newY: result.y };
                 }
             );
+            this.bindMouseDragMarker('startHandle',
+                () => [this.modelToCanvasXY({x: this.vm.start, y: -0.05})],
+                this.isMouseOverMarker,
+                this.vm.moveStartCommand,
+                (id) => {
+                    const result = this.canvasToModelXY({ x: this.mouseMoveEvent.offsetX, y: this.mouseMoveEvent.offsetY });
+                    return { newX: result.x };
+                }
+            );
             this.registerDrawer(this.drawAxes);
             this.registerDrawer(this.drawLines);
             this.registerDrawer(this.drawMarkers);
@@ -353,6 +362,15 @@
             ctx.stroke();
             ctx.lineWidth = 1;
             ctx.strokeStyle = 'black';
+
+            const startBottom = this.modelToCanvasXY({x: this.vm.start, y: -0.05});
+            const startTop = this.modelToCanvasXY({x: this.vm.start, y: 1});
+            ctx.beginPath();
+            ctx.moveTo(startBottom.x, startBottom.y);
+            ctx.lineTo(startTop.x, startTop.y);
+            ctx.stroke();
+
+
         };
 
         drawMarkers = (ctx, { mouseX, mouseY }) => {
@@ -366,7 +384,7 @@
                 }
                 ({ conditionMet } = this.newMethod(this.correctX(points[i]), mouseX, mouseY, i, conditionMet, ctx, 'handle'));
             }
-
+            ({ conditionMet } = this.newMethod(this.correctX({x:this.vm.start,y:-0.05}), mouseX, mouseY, 0, conditionMet, ctx, 'startHandle'));
             this.canv.style.cursor = conditionMet ? 'pointer' : 'default';
         };
 
@@ -459,6 +477,7 @@
             this.applySmoothTransitionCommand = new Command(this.applySmoothTransition, this.canApplySmoothTransition);
             this.removeSmoothTransitionCommand = new Command(this.removeSmoothTransition, this.canRemoveSmoothTransition);
             this.moveSmoothTransitionHandleCommand = new Command(this.moveSmoothTransitionHandle, this.canMoveSmoothTransitionHandle);
+            this.moveStartCommand = new Command(this.moveStartCommand, this.canMoveStartCommand);
             // end of making commands
             this.period = 360;
             this.points = [
@@ -467,6 +486,7 @@
                 new ProfilePoint(180, 1, { before: 15, after: 5 }),
                 new ProfilePoint(196, 0, { before: 5, after: 15 }),
             ];
+            this.start = 10;
         }
 
         getPoints = () => this.points;
@@ -543,7 +563,7 @@
 
         applySmoothTransition = ({ handleId }) => {
             const aa = this.points[handleId];
-            this.points[handleId] = new ProfilePoint(aa.x, aa.y, {before: 5, after: 5});
+            this.points[handleId] = new ProfilePoint(aa.x, aa.y, { before: 5, after: 5 });
         };
 
         canApplySmoothTransition = ({ handleId }) => {
@@ -655,6 +675,14 @@
             }
             return null;
         };
+
+        moveStartCommand = ({ newX }) => {
+            this.start = newX;
+        }
+
+        canMoveStartCommand = ({ newX }) => {
+            return newX >= 0 && newX < 360;
+        }
     }
 
     const root1 = document.getElementById('root1');

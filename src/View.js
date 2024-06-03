@@ -43,6 +43,15 @@ export class View extends BaseView {
                 return { id, beforeOrAfter: 'after', newX: result.x, newY: result.y };
             }
         );
+        this.bindMouseDragMarker('startHandle',
+            () => [this.modelToCanvasXY({x: this.vm.start, y: -0.05})],
+            this.isMouseOverMarker,
+            this.vm.moveStartCommand,
+            (id) => {
+                const result = this.canvasToModelXY({ x: this.mouseMoveEvent.offsetX, y: this.mouseMoveEvent.offsetY });
+                return { newX: result.x };
+            }
+        );
         this.registerDrawer(this.drawAxes);
         this.registerDrawer(this.drawLines);
         this.registerDrawer(this.drawMarkers);
@@ -144,6 +153,15 @@ export class View extends BaseView {
         ctx.stroke();
         ctx.lineWidth = 1;
         ctx.strokeStyle = 'black';
+
+        const startBottom = this.modelToCanvasXY({x: this.vm.start, y: -0.05});
+        const startTop = this.modelToCanvasXY({x: this.vm.start, y: 1});
+        ctx.beginPath();
+        ctx.moveTo(startBottom.x, startBottom.y);
+        ctx.lineTo(startTop.x, startTop.y);
+        ctx.stroke();
+
+
     };
 
     drawMarkers = (ctx, { mouseX, mouseY }) => {
@@ -157,7 +175,7 @@ export class View extends BaseView {
             }
             ({ conditionMet } = this.newMethod(this.correctX(points[i]), mouseX, mouseY, i, conditionMet, ctx, 'handle'));
         }
-
+        ({ conditionMet } = this.newMethod(this.correctX({x:this.vm.start,y:-0.05}), mouseX, mouseY, 0, conditionMet, ctx, 'startHandle'));
         this.canv.style.cursor = conditionMet ? 'pointer' : 'default';
     };
 

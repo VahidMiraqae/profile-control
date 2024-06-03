@@ -12,6 +12,7 @@ export class ViewModel {
         this.applySmoothTransitionCommand = new Command(this.applySmoothTransition, this.canApplySmoothTransition);
         this.removeSmoothTransitionCommand = new Command(this.removeSmoothTransition, this.canRemoveSmoothTransition);
         this.moveSmoothTransitionHandleCommand = new Command(this.moveSmoothTransitionHandle, this.canMoveSmoothTransitionHandle);
+        this.moveStartCommand = new Command(this.moveStartCommand, this.canMoveStartCommand);
         // end of making commands
         this.period = 360;
         this.points = [
@@ -20,6 +21,7 @@ export class ViewModel {
             new ProfilePoint(180, 1, { before: 15, after: 5 }),
             new ProfilePoint(196, 0, { before: 5, after: 15 }),
         ];
+        this.start = 10;
     }
 
     getPoints = () => this.points;
@@ -96,7 +98,7 @@ export class ViewModel {
 
     applySmoothTransition = ({ handleId }) => {
         const aa = this.points[handleId];
-        this.points[handleId] = new ProfilePoint(aa.x, aa.y, {before: 5, after: 5});
+        this.points[handleId] = new ProfilePoint(aa.x, aa.y, { before: 5, after: 5 });
     };
 
     canApplySmoothTransition = ({ handleId }) => {
@@ -208,4 +210,12 @@ export class ViewModel {
         }
         return null;
     };
+
+    moveStartCommand = ({ newX }) => {
+        this.start = newX;
+    }
+
+    canMoveStartCommand = ({ newX }) => {
+        return newX >= 0 && newX < 360;
+    }
 }
